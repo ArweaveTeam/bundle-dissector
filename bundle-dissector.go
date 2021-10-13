@@ -5,9 +5,8 @@ import "bytes"
 import "net/http"
 import "github.com/vladimirvivien/automi/stream"
 
-node := "http://gateway-2-temp.arweave.net:1984"
-
 func main() {
+	node := "http://gateway-2-temp.arweave.net:1984"
 	http.HandleFunc(
 		node + "/tx/" + "VSkuqLKJiA9vIHA_38cg3zMdFVIe7aaAUCJXLKuPFFU",
 		func(resp http.ResponseWriter, req *http.Request) {
