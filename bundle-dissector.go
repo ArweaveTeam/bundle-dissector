@@ -5,6 +5,7 @@ import "github.com/valyala/fastjson"
 import "log"
 import "os"
 import "io/ioutil"
+import "math/big"
 // import "bytes"
 import "net/http"
 // import "github.com/vladimirvivien/automi/stream"
@@ -21,8 +22,51 @@ type TxHeader struct {
 }
 
 
+// func GetAllBundleDataItems(dataRoot string) void {
+// 	node := "http://gateway-2-temp.arweave.net:1984"
+// 	resp, err := http.Get(node + "/tx/" + txId);
+// 	if err != nil {
+// 		panic("not found");
+// 	}
+// 	defer resp.Body.Close();
+// }
 
-func GetTxHeader(txId string) string {
+func GetSizeAndOffsetFromTxId(txId string) (*big.Int,string) {
+	node := "http://gateway-2-temp.arweave.net:1984"
+
+	resp, httpErr := http.Get(node + "/tx/" + txId + "/offset");
+
+	if httpErr != nil {
+		panic("not found");
+	}
+
+	defer resp.Body.Close();
+
+	body, err := ioutil.ReadAll(resp.Body);
+	if (err != nil) {
+		log.Fatal("Error while reading from tx offset response")
+	}
+
+	var parser fastjson.Parser
+	parsedJson, parseErr := parser.Parse(string(body))
+
+	if parseErr != nil {
+		log.Fatal(parseErr)
+	}
+
+	size:= new(big.Int)
+	size, ok := size.SetString(string(parsedJson.GetStringBytes("size")), 10)
+	// strconv.Atoi(string(parsedJson.GetStringBytes("size")))
+
+	if !ok {
+		log.Fatal("dataSize wasn't valid integer")
+	}
+
+	return size, string(parsedJson.GetStringBytes("offset"))
+
+}
+
+func GetDataRootFromTxId(txId string) string {
 	node := "http://gateway-2-temp.arweave.net:1984"
 
 	resp, err := http.Get(node + "/tx/" + txId);
@@ -77,9 +121,15 @@ func GetTxHeader(txId string) string {
 func main() {
 	fmt.Println("hello world!")
 	txIds := os.Args[1:]
+	txId := txIds[0]
+	dataRoot := GetDataRootFromTxId(txId)
+	dataSize, txOffset := GetSizeAndOffsetFromTxId(txId)
 
-	txHeader := GetTxHeader(txIds[0])
-	fmt.Printf("%+v\n", txHeader)
+	fmt.Printf("%+v\n", txOffset)
+	fmt.Printf(dataSize.String())
+	fmt.Printf("dataroot:", dataRoot)
+	// GetAllBundleDataItems(dataRoot)
+	// fmt.Printf("%+v\n", txHeader)
 
 	//"GET",
 	// node + "/tx/" + "VSkuqLKJiA9vIHA_38cg3zMdFVIe7aaAUCJXLKuPFFU",
