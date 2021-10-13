@@ -1,0 +1,23 @@
+["github.com/blang/semver"]
+  sumVersion = "v3.5.1+incompatible"
+  ["github.com/blang/semver".fetch]
+    type = "git"
+    url = "https://github.com/blang/semver"
+    rev = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+    sha256 = "13ws259bwcibkclbr82ilhk6zadm63kxklxhk12wayklj8ghhsmy"
+
+["github.com/goccy/go-json"]
+  sumVersion = "v0.7.4"
+  ["github.com/goccy/go-json".fetch]
+    type = "git"
+    url = "https://github.com/goccy/go-json"
+    rev = "85a5597342510419b33515b5bf532eeea6460124"
+    sha256 = "11ddw0hnj3xbvy2c1bsh46x001gnzfiwlb7zcwg09wy09aa3lgfs"
+
+["github.com/vladimirvivien/automi"]
+  sumVersion = "v0.1.0-alpha.0.0.20210803044724-6b6f77fbd090"
+  ["github.com/vladimirvivien/automi".fetch]
+    type = "git"
+    url = "https://github.com/vladimirvivien/automi"
+    rev = "6b6f77fbd09044aec6ac07dfe3a77f6724838b42"
+    sha256 = "0qnr7vyvbp88lab78w1ywmfd9nabwfbyfvdharb0wz06056y4wqq"
