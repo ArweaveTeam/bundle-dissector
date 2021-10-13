@@ -7,12 +7,20 @@
     sha256 = "13ws259bwcibkclbr82ilhk6zadm63kxklxhk12wayklj8ghhsmy"
 
 ["github.com/goccy/go-json"]
-  sumVersion = "v0.7.4"
+  sumVersion = "v0.7.9"
   ["github.com/goccy/go-json".fetch]
     type = "git"
     url = "https://github.com/goccy/go-json"
-    rev = "85a5597342510419b33515b5bf532eeea6460124"
-    sha256 = "11ddw0hnj3xbvy2c1bsh46x001gnzfiwlb7zcwg09wy09aa3lgfs"
+    rev = "d1195dff31fd59a147598c6cd2315b72e070188f"
+    sha256 = "0s41185s5diacbkvy2vhglzcr6vlw4kvw27nj3kzd8xrx2rqwy7p"
+
+["github.com/valyala/fastjson"]
+  sumVersion = "v1.6.3"
+  ["github.com/valyala/fastjson".fetch]
+    type = "git"
+    url = "https://github.com/valyala/fastjson"
+    rev = "20830cfb065be07053e7eae99a52d68f214b5962"
+    sha256 = "1dacn3m8m0zhzhvxbv3vly2zpbcz0yy3kvshq9ahh4916rs1psgq"
 
 ["github.com/vladimirvivien/automi"]
   sumVersion = "v0.1.0-alpha.0.0.20210803044724-6b6f77fbd090"

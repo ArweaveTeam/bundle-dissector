@@ -1,9 +1,10 @@
 package main
 
 import "fmt"
-import "encoding/json"
+import "github.com/valyala/fastjson"
+import "log"
 import "os"
-// import "io/ioutil"
+import "io/ioutil"
 // import "bytes"
 import "net/http"
 // import "github.com/vladimirvivien/automi/stream"
@@ -17,6 +18,59 @@ type TxHeader struct {
 	format int
 	data_root string
 	tags []TxHeaderTag
+}
+
+
+
+func GetTxHeader(txId string) string {
+	node := "http://gateway-2-temp.arweave.net:1984"
+
+	resp, err := http.Get(node + "/tx/" + txId);
+	if err != nil {
+		panic("not found");
+	}
+	defer resp.Body.Close();
+
+	body, err := ioutil.ReadAll(resp.Body);
+
+	if err != nil {
+		panic("body unreadable");
+	}
+
+	var parser fastjson.Parser
+	parsedJson, parseErr := parser.Parse(string(body))
+
+	if parseErr != nil {
+		log.Fatal(parseErr)
+	}
+
+	dataRoot := string(parsedJson.GetStringBytes("data_root"))
+
+	tags := parsedJson.GetArray("tags")
+
+	var validAns104Format = false
+	var validAns104Version = false
+
+	for _, tag := range tags {
+		tagName := string(tag.GetStringBytes("name"))
+		tagValue := string(tag.GetStringBytes("value"))
+
+		// tagPair :: Bundle-Format: binary
+		if (tagName == "QnVuZGxlLUZvcm1hdA" && tagValue == "YmluYXJ5") {
+			validAns104Format = true
+		}
+
+		// tagPair :: Bundle-Version: 2.0.0
+		if (tagName == "QnVuZGxlLVZlcnNpb24" && tagValue == "Mi4wLjA") {
+			 validAns104Version = true
+		}
+	}
+
+	if (!validAns104Format || !validAns104Version) {
+		log.Fatal("The provided tx is not a valid ans104 bundle format")
+	}
+
+	return dataRoot
 }
 
 
@@ -44,26 +98,4 @@ func main() {
 	// },
 	//)
 
-}
-
-
-func GetTxHeader(txId string) (TxHeader) {
-	node := "http://gateway-2-temp.arweave.net:1984"
-
-	resp, err := http.Get(node + "/tx/" + txId);
-	if err != nil {
-		panic("not found");
-	}
-	defer resp.Body.Close();
-
-	dec := json.NewDecoder(resp.Body)
-	var txHeader TxHeader;
-	for dec.More() {
-		err := dec.Decode(&txHeader)
-		if err != nil {
-			panic("error during parsing")
-		}
-	}
-	fmt.Printf("%+v\n", txHeader)
-	return txHeader;
 }

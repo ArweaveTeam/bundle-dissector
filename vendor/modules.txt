@@ -1,13 +1,8 @@
+# github.com/goccy/go-json v0.7.9
+## explicit
+# github.com/valyala/fastjson v1.6.3
+## explicit
+github.com/valyala/fastjson
+github.com/valyala/fastjson/fastfloat
 # github.com/vladimirvivien/automi v0.1.0-alpha.0.0.20210803044724-6b6f77fbd090
 ## explicit
-github.com/vladimirvivien/automi/api
-github.com/vladimirvivien/automi/api/context
-github.com/vladimirvivien/automi/api/tuple
-github.com/vladimirvivien/automi/collectors
-github.com/vladimirvivien/automi/emitters
-github.com/vladimirvivien/automi/operators/batch
-github.com/vladimirvivien/automi/operators/binary
-github.com/vladimirvivien/automi/operators/stream
-github.com/vladimirvivien/automi/operators/unary
-github.com/vladimirvivien/automi/stream
-github.com/vladimirvivien/automi/util
