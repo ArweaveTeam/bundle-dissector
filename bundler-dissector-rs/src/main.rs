@@ -29,7 +29,7 @@ struct DataItemMetadata {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    let param = &std::env::args().collect::<Vec<String>>()[0];
+    let param = &std::env::args().collect::<Vec<String>>()[1];
     let id = param.as_str();
     // let id = "IgVQ9ux-L-iZhbGHj2RpwyoSt1vIOW2LlKLGiQv2oDM";
     // let id = "h_q6B9f2zH3lqlq4DhLqDrnrKnNAcFQKvwxG7zCFyTw";
