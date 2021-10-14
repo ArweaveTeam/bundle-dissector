@@ -29,8 +29,10 @@ struct DataItemMetadata {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    let id = "IgVQ9ux-L-iZhbGHj2RpwyoSt1vIOW2LlKLGiQv2oDM";
-    //let id = "h_q6B9f2zH3lqlq4DhLqDrnrKnNAcFQKvwxG7zCFyTw"; // TODO change to cli param
+    let param = &std::env::args().collect::<Vec<String>>()[0];
+    let id = param.as_str();
+    // let id = "IgVQ9ux-L-iZhbGHj2RpwyoSt1vIOW2LlKLGiQv2oDM";
+    // let id = "h_q6B9f2zH3lqlq4DhLqDrnrKnNAcFQKvwxG7zCFyTw";
 
     // let tx_header = get_tx_header(&id).await?;
     let (size, offset) = get_size_and_offset(id).await?;
