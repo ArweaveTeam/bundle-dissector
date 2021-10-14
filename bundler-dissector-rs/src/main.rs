@@ -6,10 +6,11 @@ use regex::Regex;
 use reqwest::get;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, fs};
-const NODE_URL: &str = "http://gateway-2-temp.arweave.net:1984";
+
+mod stitcher;
 
 #[derive(Deserialize, Debug)]
-struct TxHeader {
+struct BundleHeader {
     data_root: String,
     tags: Vec<DataTag>,
 }
@@ -21,13 +22,13 @@ struct DataTag {
 }
 
 #[derive(Serialize, Debug)]
-struct DataItemHeader {
+struct DataItemOffset {
     id: String,
     offset: usize,
 }
 
 #[derive(Serialize, Debug)]
-struct DataItemMetadata {
+struct DataItemHeader {
     signature_type: u16,
     signature: String,      // 512 bytes
     owner: String,          // 32 bytes 
@@ -43,15 +44,14 @@ async fn main() -> Result<()> {
     let params = &std::env::args().collect::<Vec<String>>();
     let bundle_id = params[1].as_str();
     // let bundle_id = "3XEnfj9dmfGxCw6Bfl1LWGmaj12pR6laPFwNbU5C1Nw";
-
-    //let data_item_id = params[2].as_str();
+    // let data_item_id = params[2].as_str();
     let data_item_id = "tyKLk8wbY5-rnfa8_fUGuY3IalSBN4haGUZcel-gukw";
 
-    // let tx_header = get_tx_header(&bundle_id).await?;
+    // let tx_header = get_bundle_header(&bundle_id).await?;
     let (size, offset) = get_size_and_offset(bundle_id).await?;
-    let chunk = get_chunk(size, offset).await?;
-    let (chunk_metadata_end, chunk_metadata) = get_chunk_metadata(&chunk);
-    let (data_item_metadata, _, _) = get_data_item(data_item_id, chunk.as_slice(), chunk_metadata_end, chunk_metadata)?;
+    let chunk = get_chunk_by_size_and_end(size, offset).await?;
+    let (bundle_metadata_end, bundle_metadata) = get_bundle_metadata(&chunk);
+    let (data_item_metadata, _, _) = get_data_item(data_item_id, chunk.as_slice(), bundle_metadata_end, bundle_metadata)?;
 
     let metadata_string = serde_json::to_string(&data_item_metadata)?;
     fs::write("data_item_metadata.json", metadata_string)?;
@@ -59,10 +59,17 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn get_tx_header(tx_id: &str) -> Result<TxHeader> {
-    let tx_header = get(format!("{}/tx/{}", NODE_URL, tx_id))
+
+
+async fn get_chunk_by_size_and_end(size: u64, chunk_end: u64) -> Result<Vec<u8>> {
+    let init_chunk_end = chunk_end - size + 1;
+    Ok(stitcher::get_chunk(init_chunk_end).await?)
+}
+
+async fn get_bundle_header(tx_id: &str) -> Result<BundleHeader> {
+    let tx_header = get(format!("{}/tx/{}", stitcher::NODE_URL, tx_id))
         .await?
-        .json::<TxHeader>()
+        .json::<BundleHeader>()
         .await?;
 
     let mut valid_ans_104_format = false;
@@ -89,38 +96,25 @@ async fn get_size_and_offset(tx_id: &str) -> Result<(u64, u64)> {
         offset: String,
     }
 
-    let SizeOffset { size, offset } = get(format!("{}/tx/{}/offset", NODE_URL, tx_id))
+    let SizeOffset { size, offset } = get(format!("{}/tx/{}/offset", stitcher::NODE_URL, tx_id))
         .await?
         .json::<SizeOffset>()
         .await?;
     Ok((size.parse::<u64>()?, offset.parse::<u64>()?))
 }
 
-async fn get_chunk(size: u64, offset: u64) -> Result<Vec<u8>> {
-    let init_offset = offset - size + 1;
-    let url = format!("{}/chunk/{}", NODE_URL, init_offset);
-    let data = get(url).await?;
-    let text = data.text().await?;
 
-    // Can also splice the byte stream for better performance
-    lazy_static! {
-        static ref RE: Regex = Regex::new("\"chunk\":\\s*\"(.*)\"").expect("Error compiling regex");
-    }
-    let caps = RE.captures(&text).expect("No captures were found");
-    let chunk_text = &caps[1];
-    Ok(base64_url::decode(chunk_text)?)
-}
 
-fn get_chunk_metadata(chunk_bytes: &[u8]) -> (usize, Vec<DataItemHeader>) {
+fn get_bundle_metadata(chunk_bytes: &[u8]) -> (usize, Vec<DataItemOffset>) {
     let num_data_items = u64::from_le_bytes(chunk_bytes[0..8].try_into().unwrap());
-    let chunk_metadata_end = (num_data_items as usize) * 64 + 32;
-    let offset_data = &chunk_bytes[32..chunk_metadata_end];
+    let bundle_metadata_end = (num_data_items as usize) * 64 + 32;
+    let offset_data = &chunk_bytes[32..bundle_metadata_end];
 
     (
-        chunk_metadata_end,
+        bundle_metadata_end,
         offset_data
             .chunks(64)
-            .map(|slice| DataItemHeader {
+            .map(|slice| DataItemOffset {
                 offset: u64::from_le_bytes(slice[0..8].try_into().unwrap()) as usize,
                 id: base64_url::encode(&slice[32..64]),
             })
@@ -131,12 +125,12 @@ fn get_chunk_metadata(chunk_bytes: &[u8]) -> (usize, Vec<DataItemHeader>) {
 fn get_data_item(
     data_item_id: &str,
     chunk_bytes: &[u8],
-    chunk_metadata_end: usize,
-    chunk_metadata: Vec<DataItemHeader>,
-) -> Result<(DataItemMetadata, usize, usize)> {
-    let mut offset = chunk_metadata_end;
+    bundle_metadata_end: usize,
+    bundle_metadata: Vec<DataItemOffset>,
+) -> Result<(DataItemHeader, usize, usize)> {
+    let mut offset = bundle_metadata_end;
     let mut end_byte = None;
-    for header in chunk_metadata {
+    for header in bundle_metadata {
         if header.id == data_item_id {
             end_byte = Some(offset + header.offset);
             break;
@@ -180,7 +174,7 @@ fn get_data_item(
     let tags = serde_json::from_str::<Vec<DataTag>>(tags_string)?;
     offset += number_of_tag_bytes;
 
-    let data_item_metadata = DataItemMetadata {
+    let data_item_metadata = DataItemHeader {
         signature_type,
         signature,
         owner,
