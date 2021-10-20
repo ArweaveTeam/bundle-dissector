@@ -17,3 +17,5 @@ result
 # emacs autosave
 *~
 *#
+
+.DS_Store

@@ -22,14 +22,14 @@ type TxHeader struct {
 }
 
 
-// func GetAllBundleDataItems(dataRoot string) void {
-// 	node := "http://gateway-2-temp.arweave.net:1984"
-// 	resp, err := http.Get(node + "/tx/" + txId);
-// 	if err != nil {
-// 		panic("not found");
-// 	}
-// 	defer resp.Body.Close();
-// }
+func GetAllBundleDataItems(dataRoot string) void {
+	node := "http://gateway-2-temp.arweave.net:1984"
+	resp, err := http.Get(node + "/tx/" + txId);
+	if err != nil {
+		panic("not found");
+	}
+	defer resp.Body.Close();
+}
 
 func GetSizeAndOffsetFromTxId(txId string) (*big.Int,string) {
 	node := "http://gateway-2-temp.arweave.net:1984"

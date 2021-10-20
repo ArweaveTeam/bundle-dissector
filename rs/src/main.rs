@@ -6,6 +6,10 @@ use regex::Regex;
 use reqwest::get;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, fs};
+use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use futures::future::poll_fn;
+
 const NODE_URL: &str = "http://gateway-2-temp.arweave.net:1984";
 
 #[derive(Deserialize, Debug)]
@@ -30,7 +34,7 @@ struct DataItemHeader {
 struct DataItemMetadata {
     signature_type: u16,
     signature: String,      // 512 bytes
-    owner: String,          // 32 bytes 
+    owner: String,          // 32 bytes
     target: Option<String>, // 1 + (32 bytes)
     anchor: Option<String>, // 1 + (32 bytes)
     number_of_tags: u64,
@@ -38,26 +42,6 @@ struct DataItemMetadata {
     tags: Vec<DataTag>,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    let params = &std::env::args().collect::<Vec<String>>();
-    let bundle_id = params[1].as_str();
-    // let bundle_id = "3XEnfj9dmfGxCw6Bfl1LWGmaj12pR6laPFwNbU5C1Nw";
-
-    //let data_item_id = params[2].as_str();
-    let data_item_id = "tyKLk8wbY5-rnfa8_fUGuY3IalSBN4haGUZcel-gukw";
-
-    // let tx_header = get_tx_header(&bundle_id).await?;
-    let (size, offset) = get_size_and_offset(bundle_id).await?;
-    let chunk = get_chunk(size, offset).await?;
-    let (chunk_metadata_end, chunk_metadata) = get_chunk_metadata(&chunk);
-    let (data_item_metadata, _, _) = get_data_item(data_item_id, chunk.as_slice(), chunk_metadata_end, chunk_metadata)?;
-
-    let metadata_string = serde_json::to_string(&data_item_metadata)?;
-    fs::write("data_item_metadata.json", metadata_string)?;
-
-    Ok(())
-}
 
 async fn get_tx_header(tx_id: &str) -> Result<TxHeader> {
     let tx_header = get(format!("{}/tx/{}", NODE_URL, tx_id))
@@ -175,7 +159,7 @@ fn get_data_item(
 
     let number_of_tag_bytes = usize::from_le_bytes(chunk_bytes[offset..offset+64].try_into()?);
     offset += 64;
-    
+
     let tags_string = std::str::from_utf8(&chunk_bytes[offset..offset+number_of_tag_bytes as usize])?;
     let tags = serde_json::from_str::<Vec<DataTag>>(tags_string)?;
     offset += number_of_tag_bytes;
@@ -192,4 +176,42 @@ fn get_data_item(
     };
 
     Ok((data_item_metadata, offset, end_byte))
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
+    let params = &std::env::args().collect::<Vec<String>>();
+    let bundle_id = params[1].as_str();
+    // let bundle_id = "3XEnfj9dmfGxCw6Bfl1LWGmaj12pR6laPFwNbU5C1Nw";
+
+    //let data_item_id = params[2].as_str();
+    let data_item_id = "tyKLk8wbY5-rnfa8_fUGuY3IalSBN4haGUZcel-gukw";
+
+    // let tx_header = get_tx_header(&bundle_id).await?;
+    let (size, offset) = get_size_and_offset(bundle_id).await?;
+    let chunk = get_chunk(size, offset).await?;
+    let (chunk_metadata_end, chunk_metadata) = get_chunk_metadata(&chunk);
+    let (data_item_metadata, _, _) = get_data_item(data_item_id, chunk.as_slice(), chunk_metadata_end, chunk_metadata)?;
+
+    let metadata_string = serde_json::to_string(&data_item_metadata)?;
+    fs::write("data_item_metadata.json", metadata_string)?;
+
+
+    let stream = TcpStream::connect("127.0.0.1:8000").await?;
+    let mut buf = [0; 10];
+    let mut buf = ReadBuf::new(&mut buf);
+
+    // let mut buf = vec![0; 128];
+
+    // loop {
+    //     let n = rd.read(&mut buf).await?;
+
+    //     if n == 0 {
+    //         break;
+    //     }
+
+    //     println!("GOT {:?}", &buf[..n]);
+    // }
+
+    Ok(())
 }
