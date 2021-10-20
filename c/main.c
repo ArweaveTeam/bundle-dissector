@@ -197,9 +197,7 @@ int base64urlDecode(const char *input, int inputLen, char *output, int *outputLe
   int c;
   int i;
   int n;
-  char *ptr;
-  printf("11\n");
-  ptr = (char *) input;
+  uint8_t *ptr;
 
   //Check the length of the input string
   if((inputLen % 4) == 1) {
@@ -220,7 +218,7 @@ int base64urlDecode(const char *input, int inputLen, char *output, int *outputLe
   error = 1;
 
   //Point to the buffer where to write the decoded data
-  /* p = (uint8_t *) output; */
+  ptr = (uint8_t *) output;
 
   //Initialize variables
   n = 0;
@@ -229,7 +227,7 @@ int base64urlDecode(const char *input, int inputLen, char *output, int *outputLe
   //Process the Base64url-encoded string
   for(i = 0; i < inputLen && error == 1; i++) {
     //Get current character
-    c = (int) input[i];
+    c = (char) input[i];
 
     //Check the value of the current character
     if(c < 128 && base64urlDecTable[c] < 64) {
@@ -245,7 +243,9 @@ int base64urlDecode(const char *input, int inputLen, char *output, int *outputLe
             ptr[n + 1] = (value >> 8) & 0xFF;
             ptr[n + 2] = value & 0xFF;
           }
-
+        if (n < 32) {
+          printf("n: %d %d %d\n", n, ptr[n], (uint32_t) ((uint8_t) ptr[n]));
+        }
         //Adjust the length of the decoded data
         n += 3;
         //Decode next block
@@ -305,7 +305,7 @@ int ProcessChunk(struct ArweaveNode *arNode,
                  char* chunk_buffer) {
   /* printf("\n\%s\n", chunk_buffer); */
   /* int cnk_index = 0; */
-
+  printf("z-1 \n");
   char buffer[MAX_CHUNK_SIZE * 4];
   int decodedCnt = 0;
   int thisCnt;
@@ -314,23 +314,45 @@ int ProcessChunk(struct ArweaveNode *arNode,
   /* char buffer2[1024 * 4]; */
   /* int  buffer2idx = 0; */
   /* [state->chunk_buffer_index] */
-  if (!base64urlDecode(chunk_buffer, encChunkSize, &buffer[0], &thisCnt)) {
+  /* printf("zero %c \n", chunk_buffer[0]); */
+
+  if (!base64urlDecode(chunk_buffer, encChunkSize, buffer, &thisCnt)) {
     printf("Decode Failure\n");
     exit(1);
     return 1;
   }
-  printf("one \n");
-  state->chunk_buffer_index += thisCnt;
-  printf("222 %i \n", state->chunk_buffer_index);
-  if (state->di_cnt_done != 1 && state->chunk_buffer_index > 32) {
-    printf("333 \n");
-    arBundleHeader->data_item_cnt = 0;
 
-    for(int i=7; i>=0; i--) {
-      arBundleHeader->data_item_cnt <<= 4;
-      arBundleHeader->data_item_cnt |= (uint32_t) buffer[i];
+  /* printf("type: %d %x\n", (uint8_t) buffer[0]); */
+  /* printf("one %s %d %d\n", buffer, thisCnt, encChunkSize); */
+  /* printf("bytes: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", buffer[0* sizeof(uint8_t)], buffer[1* sizeof(uint8_t)], buffer[2* sizeof(uint8_t)], buffer[3* sizeof(uint8_t)], buffer[4* sizeof(uint8_t)], buffer[5* sizeof(uint8_t)], buffer[6* sizeof(uint8_t)], buffer[7* sizeof(uint8_t)], buffer[8* sizeof(uint8_t)], buffer[9* sizeof(uint8_t)], buffer[10* sizeof(uint8_t)], buffer[11* sizeof(uint8_t)], buffer[12* sizeof(uint8_t)], */
+  /*        buffer[13* sizeof(uint8_t)], buffer[14* sizeof(uint8_t)], buffer[15* sizeof(uint8_t)], buffer[16* sizeof(uint8_t)], buffer[17* sizeof(uint8_t)], buffer[18* sizeof(uint8_t)], buffer[19* sizeof(uint8_t)], buffer[20* sizeof(uint8_t)], buffer[21* sizeof(uint8_t)], buffer[22* sizeof(uint8_t)], buffer[23* sizeof(uint8_t)], buffer[24* sizeof(uint8_t)], buffer[25* sizeof(uint8_t)]); */
+  state->chunk_buffer_index += thisCnt;
+
+  if (state->di_cnt_done != 1 && state->chunk_buffer_index > 32) {
+    for(int i=0; i < 32; i++) {
+
+      printf("i: %d val: %hhu %lu\n", i, (uint8_t) buffer[i * sizeof(uint8_t)], sizeof(uint8_t));
+
+      /* arBundleHeader->data_item_cnt += (uint8_t) &buffer[i * sizeof(uint8_t)]; */
+
+      /* arBundleHeader->data_item_cnt += strtol((uint8_t) &buffer[i * sizeof(uint8_t)], 0, 16); */
+      /* arBundleHeader->data_item_cnt <<= 4; */
+      /* arBundleHeader->data_item_cnt |= (uint32_t) buffer[i]; */
     }
-    printf("data_item_cnt %d\n", arBundleHeader->data_item_cnt);
+
+    /* arBundleHeader->data_item_cnt = 0; */
+    /* char dataItemCnt[3] = { 0 }; */
+    /* sprintf(dataItemCnt, "%2x", buffer[0]); */
+    /* arBundleHeader->data_item_cnt = strtol(dataItemCnt, 0, 16); */
+    /* arBundleHeader->data_item_cnt */
+    printf("333 %d \n", arBundleHeader->data_item_cnt);
+    /* arBundle->data_item_cnt */
+
+    /* for(int i=7; i>=0; i--) { */
+    /*   arBundleHeader->data_item_cnt <<= 4; */
+    /*   arBundleHeader->data_item_cnt |= (uint32_t) buffer[i]; */
+    /* } */
+    /* printf("data_item_cnt %d\n", arBundleHeader->data_item_cnt); */
     state->di_cnt_done = 1;
   }
 
@@ -344,9 +366,14 @@ int ProcessBundle(struct ArweaveNode *arNode,
                   struct StateMachine *state) {
 
   int sock, contentlengh, status;
+
+  // sizeof return annoying long int which we dont need
+  int chunk_buffer_len = MAX_CHUNK_SIZE * 4;
+  int page_buffer_len = MAX_CHUNK_SIZE * 8;
+
   struct sockaddr_in server_addr;
-  char chunk_buffer[MAX_CHUNK_SIZE * 4];
-  char page_buffer[MAX_CHUNK_SIZE * 8];
+  char chunk_buffer[chunk_buffer_len];
+  char page_buffer[page_buffer_len];
   char send_data[1024];
   char recv_data[1024];
   char path[256];
@@ -358,6 +385,12 @@ int ProcessBundle(struct ArweaveNode *arNode,
   int current_chunk_end = -1;
   int current_page_index = 0;
   int bytes_received;
+
+  state->chunk_buffer_index = 0;
+  state->iter_index = 0;
+  state->di_cnt_done = -1;
+  state->offset_done = -1;
+  state->header_done = -1;
 
   while (arBundle->currentOffset < arBundle->endOffset) {
 
@@ -421,14 +454,16 @@ int ProcessBundle(struct ArweaveNode *arNode,
 
       if (json_token_chunk_start > -1 && current_chunk_start > -1 && current_chunk_end > -1) {
         int encChunkSize = current_chunk_end - current_chunk_start;
-        if (((encChunkSize + state->chunk_buffer_index) % sizeof(page_buffer)) == (encChunkSize + state->chunk_buffer_index)) {
-          memcpy(chunk_buffer + state->chunk_buffer_index, &page_buffer[current_chunk_start], encChunkSize);
+        if (((encChunkSize + state->chunk_buffer_index) % page_buffer_len) == (encChunkSize + state->chunk_buffer_index)) {
+          memcpy(chunk_buffer + state->chunk_buffer_index, page_buffer + current_chunk_start, encChunkSize);
         } else {
-          memcpy(&chunk_buffer[state->chunk_buffer_index], &page_buffer[current_chunk_start],
-                 sizeof(page_buffer) - state->chunk_buffer_index);
-          memcpy(&chunk_buffer[0], &page_buffer[current_chunk_start],
-                 (encChunkSize + state->chunk_buffer_index) % sizeof(page_buffer));
+          printf("not same size %d %d\n", ((encChunkSize + state->chunk_buffer_index) % page_buffer_len), (encChunkSize + state->chunk_buffer_index));
+          memcpy(chunk_buffer + state->chunk_buffer_index, page_buffer + current_chunk_start,
+                 page_buffer_len - state->chunk_buffer_index);
+          memcpy(chunk_buffer, &page_buffer[current_chunk_start],
+                 (encChunkSize + state->chunk_buffer_index) % page_buffer_len);
         }
+        printf("chunk buffer %s \n first char %c \n", chunk_buffer, chunk_buffer[0]);
         ProcessChunk(arNode, arBundle, arBundleHeader, state, encChunkSize, chunk_buffer);
       }
 
